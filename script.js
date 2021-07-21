@@ -2,28 +2,29 @@ const xBlock = document.querySelector(".x");
 const x = document.getElementById("x");
 const yBlock = document.querySelector(".y");
 const y = document.getElementById("y");
-const gridUnit = document.getElementById("gridUnit");
+const gridUnitInput = document.getElementById("gridUnit");
 const clearBTN = document.getElementById("clear");
+const wrapper = document.querySelector(".wrapper");
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 let size = 25;
-const height = window.innerHeight - (window.innerHeight % size) - 150;
-const width = window.innerWidth - (window.innerWidth % size) - 150;
+
 const filledCells = [];
 
-canvas.height = height;
-canvas.width = width;
+canvas.height = window.innerHeight - (window.innerHeight % size) - 150;
+canvas.width = window.innerWidth - (window.innerWidth % size) - 150;
 
-drawGrid(height, width, size);
+drawGrid(canvas.height, canvas.width, size);
 
 window.addEventListener("wheel", (event) => {
   const delta = Math.sign(event.deltaY);
   delta < 0 ? (size += 5) : (size -= 5);
   if (size < 5) size = 5;
+  if (size > 180) size = 180;
 
-  drawGrid(height, width, size);
+  drawGrid(canvas.height, canvas.width, size);
 });
 
 canvas.addEventListener("click", (event) => {
@@ -33,12 +34,12 @@ canvas.addEventListener("click", (event) => {
   if (filledCells.length === 2) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     filledCells.length = 0;
-    drawGrid(height, width, size);
+    drawGrid(canvas.height, canvas.width, size);
   }
 
   filledCells.push({ x, y });
 
-  if (filledCells.length === 2) drawPath();
+  if (filledCells.length === 2) drawPath(filledCells[0], filledCells[1]);
 
   ctx.beginPath();
   ctx.fillStyle = "lightblue";
@@ -50,32 +51,33 @@ canvas.addEventListener("mousemove", (event) => {
   xBlock.style.left = `${event.x}px`;
   yBlock.style.top = `${event.y}px`;
 
-  //   x.innerHTML = event.x - 82;
-  //   y.innerHTML = event.y - 77;
-  x.innerHTML = Math.floor((event.x - 82) / size + 1) * (gridUnit.value || 1);
-  y.innerHTML = Math.floor((event.y - 77) / size + 1) * (gridUnit.value || 1);
+  gridUnit = !(gridUnitInput.value * 1) ? 1 : gridUnitInput.value;
+
+  x.innerHTML = Math.floor((event.x - 82) / size + 1) * gridUnit;
+  y.innerHTML = Math.floor((event.y - 77) / size + 1) * gridUnit;
 });
 
 clearBTN.addEventListener("click", () => {
-  drawGrid(height, width, size);
+  drawGrid(canvas.height, canvas.width, size);
+  filledCells.length = 0;
 });
 
 function drawGrid(height, width, size) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, width, height);
   ctx.beginPath();
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 0.5;
 
   for (let i = 0; i <= height; i += size) {
     ctx.moveTo(0, i);
-    ctx.lineTo(width + 500, i);
+    ctx.lineTo(width, i);
   }
 
   for (let i = 0; i <= width; i += size) {
     ctx.moveTo(i, 0);
-    ctx.lineTo(i, height + 500);
+    ctx.lineTo(i, height);
   }
 
-  ctx.strokeStyle = "rgb(210,210,210)";
+  ctx.strokeStyle = "white";
   ctx.stroke();
   ctx.closePath();
 
@@ -92,33 +94,34 @@ function drawGrid(height, width, size) {
   ctx.closePath();
 }
 
-function drawPath() {
-  const [A, B] = filledCells;
-  //   const C = {
-  //     x: Math.floor((A.x + B.x) / 2 / size) * size,
-  //     y: Math.floor((A.y + B.y) / 2 / size) * size,
-  //   };
+function drawPath(A, B) {
+  const dx = Math.abs(B.x - A.x);
+  const sx = A.x < B.x ? size : -size;
+  const dy = -Math.abs(B.y - A.y);
+  const sy = A.y < B.y ? size : -size;
+  let e2;
+  let er = dx + dy;
+  let end = false;
 
-  const C = {
-    x: Math.floor((A.x + (A.x + (A.x + B.x) / 2) / 2) / 2 / size) * size,
-    y: Math.floor((A.y + (A.y + (A.y + B.y) / 2) / 2) / 2 / size) * size,
-  };
-  console.log(A, B);
+  ctx.beginPath();
 
-  //   while (A.x !== B.x || A.y !== B.y) {
-  setInterval(() => {
-    if (A.x !== C.x || A.y !== C.y) {
-      if (A.x !== C.x) A.x > C.x ? (A.x -= 25) : (A.x += 25);
-      if (A.y !== C.y) A.y > C.y ? (A.y -= 25) : (A.y += 25);
+  while (!end) {
+    ctx.rect(A.x, A.y, size, size);
 
-      console.log(A.x);
-      ctx.beginPath();
-      ctx.fillRect(A.x, A.y, size, size);
-      ctx.closePath();
-    } else {
-      // calculate center point
-      C.x = Math.floor((A.x + (A.x + B.x) / 2) / 2 / size) * size;
-      C.y = Math.floor((A.y + (A.y + B.y) / 2) / 2 / size) * size;
+    if (A.x === B.x && A.y === B.y) {
+      end = true;
     }
-  }, 100);
+
+    e2 = 2 * er;
+    if (e2 > dy) {
+      er += dy;
+      A.x += sx;
+    }
+    if (e2 < dx) {
+      er += dx;
+      A.y += sy;
+    }
+  }
+
+  ctx.fill();
 }
